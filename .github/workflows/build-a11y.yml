@@ -1,0 +1,49 @@
+name: Build accessible APK
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-a11y
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build APK
+        run: ./gradlew :app:assembleFdroidDebug --stacktrace
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/fdroid/debug/app-fdroid-debug.apk OmniBeat-a11y.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OmniBeat-a11y
+          path: OmniBeat-a11y.apk
+
+      # Publishes the newest build at a fixed link: Releases > "Latest accessible build".
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest-a11y --yes --cleanup-tag || true
+          gh release create latest-a11y OmniBeat-a11y.apk \
+            --title "Latest accessible build" \
+            --notes "Built from ${GITHUB_SHA::7}. Install OmniBeat-a11y.apk; it sits alongside OmniBeat from F-Droid." \
+            --prerelease \
+            --target "$GITHUB_SHA"

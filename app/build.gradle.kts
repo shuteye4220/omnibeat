@@ -34,7 +34,24 @@ android {
             isDefault = true
         }
     }
+    signingConfigs {
+        // Stable key for the accessibility fork's debug builds, so each new APK installs as an
+        // update over the last one. It only signs this personal fork's ".a11y" app, never the
+        // upstream OmniBeat app ID.
+        create("a11y") {
+            storeFile = file("a11y-debug.keystore")
+            storePassword = "omnibeat-a11y"
+            keyAlias = "a11y"
+            keyPassword = "omnibeat-a11y"
+        }
+    }
     buildTypes {
+        debug {
+            // Installs alongside OmniBeat from F-Droid instead of clashing with it.
+            applicationIdSuffix = ".a11y"
+            versionNameSuffix = "-a11y"
+            signingConfig = signingConfigs.getByName("a11y")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

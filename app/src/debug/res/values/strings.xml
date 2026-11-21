@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Distinguishes the accessibility fork build from OmniBeat installed from F-Droid. -->
+    <string name="app_name" translatable="false">OmniBeat A11y</string>
+</resources>
