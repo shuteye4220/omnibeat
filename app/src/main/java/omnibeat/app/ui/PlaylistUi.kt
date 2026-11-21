@@ -114,6 +114,13 @@ fun PlaylistMembershipPage(
                                 if (mode == PlaylistMembershipMode.Remove) R.drawable.ic_remove
                                 else if (added) R.drawable.ic_check else R.drawable.ic_add,
                             ),
+                            contentDescription = stringResource(
+                                when {
+                                    mode == PlaylistMembershipMode.Remove -> R.string.playlist_remove
+                                    added -> R.string.a11y_in_playlist
+                                    else -> R.string.playlist_add
+                                },
+                            ),
                             enabled = mode == PlaylistMembershipMode.Remove || !added,
                             tint = when {
                                 mode == PlaylistMembershipMode.Remove -> RadioDanger

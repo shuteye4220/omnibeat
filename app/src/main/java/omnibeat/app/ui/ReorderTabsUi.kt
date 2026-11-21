@@ -32,20 +32,24 @@ fun ReorderTabsPage(
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
         onMove(from.index, to.index)
     }
+    val reorderAccessibility = rememberReorderAccessibility()
     Box(Modifier.fillMaxSize().background(RadioBackground)) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             itemsIndexed(tabs, key = { _, page -> page.name }) { index, page ->
                 ReorderableItem(reorderState, key = page.name) { dragging ->
+                    val title = (page as? MainPage.Playlist)?.let { tab ->
+                        playlists.firstOrNull { it.id == tab.id }?.title
+                    } ?: stringResource(page.titleRes())
                     StationListItem(
-                        title = (page as? MainPage.Playlist)?.let { tab ->
-                            playlists.firstOrNull { it.id == tab.id }?.title
-                        } ?: stringResource(page.titleRes()),
+                        title = title,
                         tags = emptyList(),
                         imageUrl = null,
                         showArtwork = false,
                         selected = dragging,
-                        enabled = true,
+                        enabled = false,
                         onClick = {},
+                        accessibilityActions = reorderAccessibility.moveActions(index, tabs.size, title, onMove),
+                        accessibilityState = reorderAccessibility.position(index, tabs.size),
                         startPadding = RadioSpacing.small,
                         showDivider = index < tabs.lastIndex,
                         dividerStyle = dividerStyle,
@@ -60,7 +64,7 @@ fun ReorderTabsPage(
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_drag_indicator),
-                                    contentDescription = stringResource(R.string.action_reorder_tabs),
+                                    contentDescription = null,
                                     tint = if (dragging) RadioPrimary else RadioTextMuted,
                                     modifier = Modifier.size(RadioSizes.icon),
                                 )

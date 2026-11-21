@@ -1,5 +1,7 @@
 package omnibeat.app.ui
 
+import omnibeat.app.radio.StationSearch
+import omnibeat.app.radio.WebRadioDbClient
 import omnibeat.app.R
 import omnibeat.app.MainActivity
 import omnibeat.app.data.parseStationTags
@@ -8,7 +10,6 @@ import omnibeat.app.model.STATION_STREAM_URL_MAX_LENGTH
 import omnibeat.app.model.STATION_TITLE_MAX_LENGTH
 import omnibeat.app.radio.RadioBrowserClient
 import omnibeat.app.radio.RadioBrowserFilterOption
-import omnibeat.app.radio.RadioBrowserSearchParams
 
 import android.content.pm.PackageManager
 import android.widget.Toast
@@ -172,6 +173,10 @@ fun OmniBeatApp() {
 
         val updates = (context.applicationContext as? AppUpdateProvider)?.rememberUpdates()
         val radioBrowserClient = remember { RadioBrowserClient(context.applicationContext) }
+        val stationSearch = remember {
+            StationSearch(radioBrowserClient, WebRadioDbClient(context.applicationContext))
+        }
+        var onlineSearchCursor by remember { mutableStateOf(StationSearch.Cursor()) }
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val playbackState by PlaybackService.state.collectAsState()
         val sleepTimerRemainingSeconds by PlaybackService.sleepTimerRemainingSeconds.collectAsState()
@@ -595,11 +600,12 @@ fun OmniBeatApp() {
                 val errors = mutableListOf<String>()
                 try {
                     runCatching {
-                        radioBrowserClient.searchStations(query.toRadioBrowserParams(offset = 0))
-                    }.onSuccess { results ->
-                        onlineSearchResults = results
+                        stationSearch.search(query.toRadioBrowserParams())
+                    }.onSuccess { page ->
+                        onlineSearchResults = page.stations
+                        onlineSearchCursor = page.next
                         onlineSearchLastQuery = query
-                        onlineSearchHasMore = results.size == RadioBrowserSearchParams.DEFAULT_LIMIT
+                        onlineSearchHasMore = page.hasMore
                         onlineOptionsExpanded = false
                     }.onFailure { error ->
                         if (error is CancellationException) throw error
@@ -818,11 +824,11 @@ fun OmniBeatApp() {
             onlineSearchLoadingMore = true
             scope.launch {
                 runCatching {
-                    radioBrowserClient.searchStations(
-                        query.toRadioBrowserParams(offset = onlineSearchResults.size),
-                    )
-                }.onSuccess { results ->
-                    if (results.isEmpty()) {
+                    stationSearch.search(query.toRadioBrowserParams(), onlineSearchCursor)
+                }.onSuccess { page ->
+                    val results = page.stations
+                    onlineSearchCursor = page.next
+                    if (results.isEmpty() && !page.hasMore) {
                         onlineSearchHasMore = false
                     } else {
                         val existingKeys = onlineSearchResults
@@ -832,7 +838,7 @@ fun OmniBeatApp() {
                             station.stationUuid.ifBlank { station.streamUrl } !in existingKeys
                         }
                         onlineSearchResults = onlineSearchResults + newResults
-                        onlineSearchHasMore = results.size == RadioBrowserSearchParams.DEFAULT_LIMIT
+                        onlineSearchHasMore = page.hasMore
                     }
                 }.onFailure { error ->
                     if (error is CancellationException) throw error

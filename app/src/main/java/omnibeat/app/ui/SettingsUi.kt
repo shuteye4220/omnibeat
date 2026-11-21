@@ -1,5 +1,13 @@
 package omnibeat.app.ui
 
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.PaddingValues
 
 import androidx.compose.foundation.layout.heightIn
@@ -11,7 +19,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -72,6 +79,7 @@ fun ThemeModeSegmentedControl(
 
     Box(
         modifier = modifier
+            .selectableGroup()
             .width(segmentWidth * options.size)
             .height(controlHeight)
             .background(RadioSurfaceHigh, CircleShape),
@@ -92,21 +100,31 @@ fun ThemeModeSegmentedControl(
                     modifier = Modifier
                         .width(segmentWidth)
                         .height(controlHeight)
-                        .clickable(
+                        .selectable(
+                            selected = selected,
                             interactionSource = interactionSource,
                             indication = null,
+                            role = Role.RadioButton,
                             onClick = { onThemeModeChange(option) },
                         ),
                 ) {
                     Icon(
                         painter = painterResource(themeModeIcon(option)),
-                        contentDescription = null,
+                        contentDescription = stringResource(themeModeLabel(option)),
                         tint = if (selected) RadioText else RadioTextMuted,
                         modifier = Modifier.size(RadioSizes.icon),
                     )
                 }
             }
         }
+    }
+}
+
+private fun themeModeLabel(themeMode: ThemeMode): Int {
+    return when (themeMode) {
+        ThemeMode.System -> R.string.a11y_theme_system
+        ThemeMode.Light -> R.string.a11y_theme_light
+        ThemeMode.Dark -> R.string.a11y_theme_dark
     }
 }
 
@@ -538,9 +556,16 @@ internal fun <T> SettingsDropdownRow(
             )
         }
         Box {
-            TextButton(onClick = { expanded = true }) {
+            val valueLabel = optionLabel(selectedOption)
+            TextButton(
+                onClick = { expanded = true },
+                modifier = Modifier.semantics {
+                    contentDescription = "$title, $valueLabel"
+                    role = Role.DropdownList
+                },
+            ) {
                 Text(
-                    text = optionLabel(selectedOption),
+                    text = valueLabel,
                     color = RadioPrimary,
                 )
             }
@@ -605,9 +630,16 @@ private fun SettingsPauseTimeoutRow(
             )
         }
         Box {
-            TextButton(onClick = { expanded = true }) {
+            val valueLabel = pauseTimeoutLabel(selectedMinutes)
+            TextButton(
+                onClick = { expanded = true },
+                modifier = Modifier.semantics {
+                    contentDescription = "$title, $valueLabel"
+                    role = Role.DropdownList
+                },
+            ) {
                 Text(
-                    text = pauseTimeoutLabel(selectedMinutes),
+                    text = valueLabel,
                     color = RadioPrimary,
                 )
             }
@@ -649,6 +681,7 @@ private fun SettingsSectionHeader(
         color = color ?: RadioTextMuted,
         fontSize = RadioTextSizes.bodySmall,
         modifier = modifier
+            .semantics { heading() }
             .fillMaxWidth()
             .padding(top = RadioSpacing.fieldGap, bottom = RadioSpacing.small),
     )
@@ -680,6 +713,12 @@ internal fun SettingsSwitchRow(
         horizontalArrangement = Arrangement.spacedBy(RadioSpacing.groupGap),
         modifier = modifier
             .fillMaxWidth()
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                role = Role.Switch,
+                onValueChange = onCheckedChange,
+            )
             .padding(vertical = RadioSpacing.fieldGap),
     ) {
         Column(
@@ -700,7 +739,7 @@ internal fun SettingsSwitchRow(
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = null,
             enabled = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = RadioText,
@@ -743,6 +782,7 @@ private fun SettingsDangerRow(
         }
         OmniIconButton(
             painter = painterResource(R.drawable.ic_delete),
+            contentDescription = title,
             onClick = onClick,
             tint = RadioDanger,
         )
@@ -799,6 +839,7 @@ private fun SettingsActionRow(
         if (actionText == null) {
             OmniIconButton(
                 painter = painterResource(R.drawable.ic_sync),
+                contentDescription = title,
                 onClick = onClick,
                 enabled = enabled && !syncing,
                 tint = if (syncing || !enabled) RadioTextMuted else RadioPrimary,

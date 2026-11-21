@@ -5,6 +5,9 @@ import omnibeat.app.model.Station
 import omnibeat.app.model.StationDividerStyle
 
 import omnibeat.app.data.StationArtworkCache
+import omnibeat.app.data.appString
+import android.content.res.Resources
+import android.view.View
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -31,6 +34,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -65,6 +74,7 @@ fun EmptyStationsState(modifier: Modifier = Modifier) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(RadioSpacing.small),
+            modifier = Modifier.semantics(mergeDescendants = true) {},
         ) {
             Text(
                 text = stringResource(R.string.empty_stations_prefix),
@@ -79,7 +89,7 @@ fun EmptyStationsState(modifier: Modifier = Modifier) {
                 Text(stringResource(R.string.empty_stations_suffix_start), color = RadioTextMuted, fontSize = RadioTextSizes.bodyLarge)
                 Icon(
                     painter = painterResource(R.drawable.ic_more_vert),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.a11y_more_options),
                     tint = RadioTextMuted,
                     modifier = Modifier
                         .padding(horizontal = RadioSpacing.compact)
@@ -100,6 +110,7 @@ fun EmptyFavoritesState(modifier: Modifier = Modifier) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(RadioSpacing.small),
+            modifier = Modifier.semantics(mergeDescendants = true) {},
         ) {
             Text(
                 text = stringResource(R.string.empty_favorites_prefix),
@@ -118,7 +129,7 @@ fun EmptyFavoritesState(modifier: Modifier = Modifier) {
                 )
                 Icon(
                     painter = painterResource(R.drawable.ic_favorite_border),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.a11y_state_favorite),
                     tint = RadioTextMuted,
                     modifier = Modifier
                         .padding(start = RadioSpacing.compact)
@@ -152,6 +163,7 @@ fun StationList(
     val reorderableListState = rememberReorderableLazyListState(listState) { from, to ->
         onMove(from.index, to.index)
     }
+    val reorderAccessibility = rememberReorderAccessibility()
     val stationOrderSignature = stations.joinToString(separator = "|") { it.id }
     val previousStationOrderSignature = remember { mutableStateOf(stationOrderSignature) }
     val wasReordering = remember { mutableStateOf(reordering) }
@@ -212,6 +224,16 @@ fun StationList(
                         } else {
                             Modifier
                         },
+                        moveActions = if (reordering) {
+                            reorderAccessibility.moveActions(index, stations.size, station.title, onMove)
+                        } else {
+                            emptyList()
+                        },
+                        positionText = if (reordering) {
+                            reorderAccessibility.position(index, stations.size)
+                        } else {
+                            null
+                        },
                         onFavoriteClick = { onFavoriteClick(index, station) },
                         onClick = { onStationClick(index, station) },
                         onLongClick = { onStationEdit(index, station) },
@@ -244,6 +266,10 @@ fun StationListItem(
     startPadding: androidx.compose.ui.unit.Dp = RadioSpacing.page,
     showDivider: Boolean = true,
     dividerStyle: StationDividerStyle = StationDividerStyle.Inset,
+    onClickLabel: String? = null,
+    onLongClickLabel: String? = null,
+    accessibilityActions: List<CustomAccessibilityAction> = emptyList(),
+    accessibilityState: String? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -251,11 +277,24 @@ fun StationListItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(if (selected) RadioSurfaceHigh else RadioBackground)
-                .combinedClickable(
-                    enabled = enabled,
-                    onClick = onClick,
-                    onLongClick = onLongClick,
+                .then(
+                    if (enabled) {
+                        Modifier.combinedClickable(
+                            onClickLabel = onClickLabel,
+                            onLongClickLabel = onLongClickLabel.takeIf { onLongClick != null },
+                            onClick = onClick,
+                            onLongClick = onLongClick,
+                        )
+                    } else {
+                        // Not clickable (e.g. while reordering), but still one readable
+                        // item so its accessibility actions stay reachable.
+                        Modifier.semantics(mergeDescendants = true) {}
+                    },
                 )
+                .semantics {
+                    if (accessibilityActions.isNotEmpty()) customActions = accessibilityActions
+                    if (!accessibilityState.isNullOrEmpty()) stateDescription = accessibilityState
+                }
                 .padding(
                     start = startPadding,
                     end = if (trailingContent == null) RadioSpacing.page else RadioSpacing.small,
@@ -406,10 +445,31 @@ private fun StationRow(
     dividerStyle: StationDividerStyle,
     modifier: Modifier = Modifier,
     dragHandleModifier: Modifier,
+    moveActions: List<CustomAccessibilityAction>,
+    positionText: String?,
     onFavoriteClick: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
+    val favoriteActionLabel = stringResource(
+        if (station.isFavorite) R.string.a11y_remove_from_favorites else R.string.a11y_add_to_favorites,
+    )
+    val editLabel = stringResource(R.string.a11y_edit_station)
+    val playingLabel = stringResource(R.string.a11y_state_playing)
+    val favoriteLabel = stringResource(R.string.a11y_state_favorite)
+    val stateText = listOfNotNull(
+        playingLabel.takeIf { playing },
+        favoriteLabel.takeIf { station.isFavorite },
+        positionText,
+    ).joinToString(", ")
+    val rowActions = when {
+        reordering -> moveActions
+        enabled -> listOf(
+            CustomAccessibilityAction(favoriteActionLabel) { onFavoriteClick(); true },
+            CustomAccessibilityAction(editLabel) { onLongClick(); true },
+        )
+        else -> emptyList()
+    }
     StationListItem(
         title = station.title,
         tags = station.tags,
@@ -419,6 +479,10 @@ private fun StationRow(
         enabled = enabled,
         onClick = onClick,
         onLongClick = onLongClick,
+        onClickLabel = stringResource(R.string.a11y_play_station),
+        onLongClickLabel = editLabel,
+        accessibilityActions = rowActions,
+        accessibilityState = stateText,
         startPadding = if (reordering) RadioSpacing.small else RadioSpacing.page,
         showDivider = showDivider,
         dividerStyle = dividerStyle,
@@ -467,6 +531,7 @@ private fun StationRow(
                             painter = painterResource(
                                 if (station.isFavorite) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
                             ),
+                            contentDescription = favoriteActionLabel,
                             enabled = enabled && !reordering,
                             onClick = onFavoriteClick,
                             tint = if (station.isFavorite) RadioPrimary else RadioText,
@@ -515,4 +580,54 @@ private fun StationPlayingIndicator(modifier: Modifier = Modifier) {
             )
         }
     }
+}
+
+/**
+ * Screen-reader alternatives to drag-and-drop reordering: "Move up/down/to top/to bottom"
+ * actions plus a spoken confirmation of the new position.
+ */
+internal class ReorderAccessibility(
+    private val view: View,
+    private val resources: Resources,
+) {
+    fun moveActions(
+        index: Int,
+        count: Int,
+        title: String,
+        onMove: (Int, Int) -> Unit,
+    ): List<CustomAccessibilityAction> {
+        fun move(target: Int): Boolean {
+            if (target == index || target !in 0 until count) return false
+            onMove(index, target)
+            @Suppress("DEPRECATION")
+            view.announceForAccessibility(
+                resources.appString(R.string.a11y_moved_format, title, target + 1, count),
+            )
+            return true
+        }
+        return buildList {
+            if (index > 0) {
+                add(CustomAccessibilityAction(resources.appString(R.string.a11y_move_up)) { move(index - 1) })
+            }
+            if (index < count - 1) {
+                add(CustomAccessibilityAction(resources.appString(R.string.a11y_move_down)) { move(index + 1) })
+            }
+            if (index > 1) {
+                add(CustomAccessibilityAction(resources.appString(R.string.a11y_move_to_top)) { move(0) })
+            }
+            if (index < count - 2) {
+                add(CustomAccessibilityAction(resources.appString(R.string.a11y_move_to_bottom)) { move(count - 1) })
+            }
+        }
+    }
+
+    fun position(index: Int, count: Int): String =
+        resources.appString(R.string.a11y_position_format, index + 1, count)
+}
+
+@Composable
+internal fun rememberReorderAccessibility(): ReorderAccessibility {
+    val view = LocalView.current
+    val resources = LocalResources.current
+    return remember(view, resources) { ReorderAccessibility(view, resources) }
 }

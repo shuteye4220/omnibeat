@@ -1,5 +1,15 @@
 package omnibeat.app.ui
 
+import omnibeat.app.radio.StationSource
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.layout.PaddingValues
 
 import omnibeat.app.model.StationDividerStyle
@@ -9,7 +19,6 @@ import omnibeat.app.radio.stationTags
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +87,7 @@ data class OnlineStationSearchState(
     val bitrateMin: String = "",
     val bitrateMax: String = "",
     val includeBroken: Boolean = false,
+    val source: StationSource = StationSource.Both,
 )
 
 enum class SearchSortDirection(val reverse: Boolean) {
@@ -89,6 +99,14 @@ private fun SearchSortDirection.labelRes(): Int {
     return when (this) {
         SearchSortDirection.Descending -> R.string.online_search_sort_descending_order
         SearchSortDirection.Ascending -> R.string.online_search_sort_ascending_order
+    }
+}
+
+private fun StationSource.labelRes(): Int {
+    return when (this) {
+        StationSource.Both -> R.string.station_source_both
+        StationSource.RadioBrowser -> R.string.station_source_radio_browser
+        StationSource.WebRadioDb -> R.string.station_source_webradiodb
     }
 }
 
@@ -180,10 +198,13 @@ fun OnlineStationSearchPage(
                                     .fillMaxWidth()
                                     .padding(vertical = RadioSpacing.rowVertical),
                             ) {
+                                val loadingLabel = stringResource(R.string.a11y_loading)
                                 CircularProgressIndicator(
                                     color = RadioPrimary,
                                     strokeWidth = 2.dp,
-                                    modifier = Modifier.size(RadioSizes.loadingIcon),
+                                    modifier = Modifier
+                                        .size(RadioSizes.loadingIcon)
+                                        .semantics { contentDescription = loadingLabel },
                                 )
                             }
                         }
@@ -228,12 +249,15 @@ fun SearchOptionsTopBarControl(
         modifier = modifier
             .fillMaxWidth(),
     ) {
+        val expansionState = stringResource(if (expanded) R.string.a11y_expanded else R.string.a11y_collapsed)
         Surface(
             onClick = { onExpandedChange(!expanded) },
             color = RadioPrimary,
             contentColor = RadioText,
             shape = RoundedCornerShape(RadioCorners.large),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { stateDescription = expansionState },
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -356,6 +380,15 @@ private fun SearchOptionsContent(
             modifier = Modifier.padding(top = RadioSpacing.fieldGap),
         )
 
+        SearchDropdown(
+            label = stringResource(R.string.station_source_label),
+            selectedText = stringResource(searchState.source.labelRes()),
+            options = StationSource.entries,
+            optionText = { stringResource(it.labelRes()) },
+            onOptionSelected = { onSearchStateChange(searchState.copy(source = it)) },
+            modifier = Modifier.padding(top = RadioSpacing.fieldGap),
+        )
+
         HorizontalDivider(
             color = RadioOutline.copy(alpha = 0.65f),
             modifier = Modifier.padding(top = RadioSpacing.large, bottom = RadioSpacing.medium),
@@ -365,6 +398,7 @@ private fun SearchOptionsContent(
             color = RadioText,
             fontSize = RadioTextSizes.bodyLarge,
             fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.semantics { heading() },
         )
         SearchFilterDropdown(
             label = stringResource(R.string.online_search_countries),
@@ -651,11 +685,11 @@ private fun SearchCheckbox(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) },
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange),
     ) {
         Checkbox(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = null,
             colors = CheckboxDefaults.colors(
                 checkedColor = RadioPrimary,
                 uncheckedColor = RadioTextMuted,
@@ -681,6 +715,7 @@ private fun OnlineStationResultItem(
     onPreviewStation: () -> Unit,
     onAddStation: () -> Unit,
 ) {
+    val addLabel = stringResource(R.string.a11y_add_station)
     StationListItem(
         title = station.title,
         tags = station.stationTags(),
@@ -689,11 +724,17 @@ private fun OnlineStationResultItem(
         selected = selected,
         enabled = true,
         onClick = onPreviewStation,
+        onClickLabel = stringResource(R.string.a11y_preview_station),
+        accessibilityActions = if (added) emptyList() else listOf(
+            CustomAccessibilityAction(addLabel) { onAddStation(); true },
+        ),
+        accessibilityState = if (added) stringResource(R.string.a11y_station_added) else null,
         showDivider = showDivider,
         dividerStyle = dividerStyle,
         trailingContent = {
             OmniIconButton(
                 painter = painterResource(if (added) R.drawable.ic_check else R.drawable.ic_add),
+                contentDescription = stringResource(if (added) R.string.a11y_station_added else R.string.a11y_add_station),
                 enabled = !added,
                 onClick = onAddStation,
                 tint = if (added) RadioPrimary else RadioText,
@@ -712,7 +753,9 @@ private fun EmptyOnlineSearchState(
     Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.padding(horizontal = RadioSpacing.page),
+        modifier = modifier
+            .padding(horizontal = RadioSpacing.page)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) {
         Text(
             text = if (hasQuery) {
@@ -750,6 +793,7 @@ fun OnlineStationSearchState.toRadioBrowserParams(): RadioBrowserSearchParams {
         bitrateMax = bitrateMax.toIntOrNull(),
         reverse = sortDirection.reverse,
         includeBroken = includeBroken,
+        source = source,
     )
 }
 

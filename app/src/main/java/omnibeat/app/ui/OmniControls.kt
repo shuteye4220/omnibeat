@@ -120,6 +120,7 @@ fun OmniDangerButton(
 @Composable
 fun OmniIconButton(
     painter: Painter,
+    contentDescription: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     iconModifier: Modifier = Modifier,
@@ -134,7 +135,7 @@ fun OmniIconButton(
     ) {
         Icon(
             painter = painter,
-            contentDescription = null,
+            contentDescription = contentDescription,
             tint = if (enabled) tint else disabledTint,
             modifier = iconModifier.size(RadioSizes.icon),
         )

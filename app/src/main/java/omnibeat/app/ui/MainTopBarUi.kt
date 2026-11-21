@@ -38,6 +38,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import omnibeat.app.ui.appStringResource as stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
@@ -97,11 +101,13 @@ fun MainTopBar(
         if (showTabs) {
             OmniIconButton(
                 painter = painterResource(R.drawable.ic_menu),
+                contentDescription = stringResource(R.string.a11y_open_menu),
                 onClick = onOpenDrawer,
             )
         } else {
             OmniIconButton(
                 painter = painterResource(R.drawable.ic_arrow_back),
+                contentDescription = stringResource(R.string.action_back),
                 onClick = onNavigateBack,
             )
         }
@@ -164,7 +170,9 @@ fun MainTopBar(
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = RadioSpacing.medium),
+                        modifier = Modifier
+                            .padding(start = RadioSpacing.medium)
+                            .semantics { heading() },
                     )
                 }
             }
@@ -173,11 +181,13 @@ fun MainTopBar(
             if (reordering) {
                 OmniIconButton(
                     painter = painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.a11y_cancel_reorder),
                     onClick = onCancelReorder,
                     tint = Color(0xFFFF5C6C),
                 )
                 OmniIconButton(
                     painter = painterResource(R.drawable.ic_check),
+                    contentDescription = stringResource(R.string.a11y_save_order),
                     onClick = onConfirmReorder,
                     tint = Color(0xFF66D17A),
                 )
@@ -227,6 +237,7 @@ private fun StationMenuButton(
     Box {
         OmniIconButton(
             painter = painterResource(R.drawable.ic_more_vert),
+            contentDescription = stringResource(R.string.a11y_more_options),
             onClick = {
                 menuPage = StationMenuPage.Main
                 expanded = true
@@ -419,10 +430,20 @@ private fun StationSortMenu(
         },
     )
     HorizontalDivider(color = RadioOutline.copy(alpha = 0.65f))
+    val selectedLabel = stringResource(R.string.a11y_selected)
+    val ascendingLabel = stringResource(R.string.a11y_ascending)
+    val descendingLabel = stringResource(R.string.a11y_descending)
     StationSortMode.entries.forEach { option ->
         val selected = sortState.mode == option
         DropdownMenuItem(
-            modifier = Modifier.heightIn(min = RadioSizes.menuItemMinHeight),
+            modifier = Modifier
+                .heightIn(min = RadioSizes.menuItemMinHeight)
+                .semantics {
+                    this.selected = selected
+                    if (selected && option != StationSortMode.Custom) {
+                        stateDescription = "$selectedLabel, " + if (sortState.ascending) ascendingLabel else descendingLabel
+                    }
+                },
             contentPadding = PaddingValues(horizontal = RadioSpacing.large),
             text = {
                 Text(

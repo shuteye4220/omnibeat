@@ -1,5 +1,9 @@
 package omnibeat.app.ui
 
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import omnibeat.app.R
 import omnibeat.app.model.ThemeMode
 
@@ -358,10 +362,14 @@ private fun OnboardingDots(
     selectedIndex: Int,
     modifier: Modifier = Modifier,
 ) {
+    val pageText = stringResource(R.string.a11y_page_format, selectedIndex + 1, pageCount)
     Row(
         horizontalArrangement = Arrangement.spacedBy(RadioSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier,
+        modifier = modifier.semantics {
+            contentDescription = pageText
+            liveRegion = LiveRegionMode.Polite
+        },
     ) {
         repeat(pageCount) { index ->
             Box(

@@ -85,6 +85,7 @@ fun StationEditorDialog(
                 if (onSyncArtwork != null) {
                     OmniIconButton(
                         painter = painterResource(R.drawable.ic_image_search),
+                        contentDescription = stringResource(R.string.a11y_find_artwork),
                         onClick = onSyncArtwork,
                         tint = RadioPrimary,
                     )
@@ -92,6 +93,7 @@ fun StationEditorDialog(
                 if (showDelete) {
                     OmniIconButton(
                         painter = painterResource(R.drawable.ic_delete),
+                        contentDescription = stringResource(R.string.a11y_delete_station),
                         onClick = {
                             if (confirmStationDeletion) {
                                 confirmDelete = true

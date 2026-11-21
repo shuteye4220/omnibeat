@@ -211,9 +211,10 @@ fun SleepTimerPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val description = stringResource(R.string.page_sleep_timer)
+    val timeText = formatSleepTimer(remainingSeconds)
+    val description = stringResource(R.string.a11y_sleep_timer_format, timeText)
     OmniPrimaryButton(
-        text = formatSleepTimer(remainingSeconds),
+        text = timeText,
         onClick = onClick,
         modifier = modifier.semantics { contentDescription = description },
     )

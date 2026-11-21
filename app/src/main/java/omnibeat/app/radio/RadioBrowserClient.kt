@@ -21,7 +21,15 @@ data class RadioBrowserStation(
     val codec: String,
     val bitrate: Int,
     val imageUrl: String?,
+    val source: StationSource = StationSource.RadioBrowser,
 )
+
+/** Which station directory a search uses. [Both] merges them and keeps the working stream of duplicates. */
+enum class StationSource {
+    Both,
+    RadioBrowser,
+    WebRadioDb,
+}
 
 fun RadioBrowserStation.stationTags(): List<String> {
     return buildList {
@@ -56,6 +64,7 @@ data class RadioBrowserSearchParams(
     val bitrateMax: Int?,
     val reverse: Boolean,
     val includeBroken: Boolean,
+    val source: StationSource = StationSource.Both,
     val offset: Int = 0,
     val limit: Int = DEFAULT_LIMIT,
 ) {

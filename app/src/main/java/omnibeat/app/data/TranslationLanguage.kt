@@ -71,7 +71,10 @@ object TranslationLanguage {
     fun get(resources: Resources, @StringRes id: Int, vararg args: Any): String {
         val translation = activeTranslation(resources)
             ?: return if (args.isEmpty()) resources.getString(id) else resources.getString(id, *args)
-        val text = translation.strings.getValue(resources.getResourceEntryName(id))
+        // Strings added after a translation was exported (e.g. accessibility labels)
+        // fall back to the bundled resources instead of crashing.
+        val text = translation.strings[resources.getResourceEntryName(id)]
+            ?: return if (args.isEmpty()) resources.getString(id) else resources.getString(id, *args)
         return if (args.isEmpty()) text else String.format(translation.locale, text, *args)
     }
 }

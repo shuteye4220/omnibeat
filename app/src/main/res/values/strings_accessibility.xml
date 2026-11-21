@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screen reader labels, states and actions. Kept apart from strings.xml so the
+     in-app translation importer and its completeness checks are unaffected;
+     missing translations fall back to English. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <!-- Top bar -->
+    <string name="a11y_open_menu">Open menu</string>
+    <string name="a11y_more_options">More options</string>
+    <string name="a11y_cancel_reorder">Cancel reordering</string>
+    <string name="a11y_save_order">Save order</string>
+
+    <!-- Station rows -->
+    <string name="a11y_add_to_favorites">Add to favorites</string>
+    <string name="a11y_remove_from_favorites">Remove from favorites</string>
+    <string name="a11y_state_favorite">Favorite</string>
+    <string name="a11y_state_playing">Playing</string>
+    <string name="a11y_play_station">Play</string>
+    <string name="a11y_preview_station">Preview</string>
+    <string name="a11y_edit_station">Edit station</string>
+    <string name="a11y_move_up">Move up</string>
+    <string name="a11y_move_down">Move down</string>
+    <string name="a11y_move_to_top">Move to top</string>
+    <string name="a11y_move_to_bottom">Move to bottom</string>
+    <string name="a11y_position_format">Position %1$d of %2$d</string>
+    <string name="a11y_moved_format">%1$s moved to position %2$d of %3$d</string>
+    <string name="a11y_add_station">Add station</string>
+    <string name="a11y_station_added">Added</string>
+    <string name="a11y_in_playlist">In playlist</string>
+
+    <!-- Player panel -->
+    <string name="a11y_expand_player">Expand player</string>
+    <string name="a11y_collapse_player">Collapse player</string>
+    <string name="a11y_random_station">Random station</string>
+    <string name="a11y_previous_station">Previous station</string>
+    <string name="a11y_next_station">Next station</string>
+    <string name="a11y_play">Play</string>
+    <string name="a11y_pause">Pause</string>
+    <string name="a11y_stop">Stop</string>
+    <string name="a11y_volume">Volume</string>
+    <string name="a11y_volume_up">Volume up</string>
+    <string name="a11y_volume_down">Volume down</string>
+    <string name="a11y_percent_format">%1$d percent</string>
+    <string name="a11y_copy_track">Copy track title</string>
+    <string name="a11y_show_stream_info">Show stream info</string>
+    <string name="a11y_loading">Loading</string>
+    <string name="a11y_sleep_timer_format">Sleep timer, %1$s remaining</string>
+
+    <!-- Station editor -->
+    <string name="a11y_find_artwork">Find station artwork</string>
+    <string name="a11y_delete_station">Delete station</string>
+
+    <!-- Station directories for online search -->
+    <string name="station_source_label">Station database</string>
+    <string name="station_source_both">Both (keep working stream)</string>
+    <string name="station_source_radio_browser">Radio Browser</string>
+    <string name="station_source_webradiodb">webradiodb</string>
+
+    <!-- General -->
+    <string name="a11y_selected">Selected</string>
+    <string name="a11y_expanded">Expanded</string>
+    <string name="a11y_collapsed">Collapsed</string>
+    <string name="a11y_ascending">Ascending</string>
+    <string name="a11y_descending">Descending</string>
+    <string name="a11y_theme_system">System theme</string>
+    <string name="a11y_theme_light">Light theme</string>
+    <string name="a11y_theme_dark">Dark theme</string>
+    <string name="a11y_page_format">Page %1$d of %2$d</string>
+    <string name="a11y_open_link">Open link</string>
+    <string name="a11y_copy_link">Copy link</string>
+</resources>

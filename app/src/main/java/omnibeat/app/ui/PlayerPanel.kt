@@ -59,6 +59,19 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
+import kotlin.math.roundToInt
 import omnibeat.app.ui.appStringResource as stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,6 +121,11 @@ fun PlayerPanel(
         null
     }
     val hasActivePlaybackRequest = isPlaying || loading
+    val canCopyTrack = trackStatus == null && trackText.isNotBlank()
+    val showStreamInfoLabel = stringResource(R.string.a11y_show_stream_info)
+    val stopLabel = stringResource(R.string.a11y_stop)
+    // Announce station-level events (resolving, waiting, errors) but not every song change.
+    val announceStatus = errorText != null || trackStatus != null
 
     Column(
         modifier = Modifier
@@ -130,6 +148,9 @@ fun PlayerPanel(
             )
             OmniIconButton(
                 painter = painterResource(R.drawable.ic_player_collapse),
+                contentDescription = stringResource(
+                    if (collapsed) R.string.a11y_expand_player else R.string.a11y_collapse_player,
+                ),
                 onClick = { onCollapsedChange(!collapsed) },
                 tint = RadioTextMuted,
                 modifier = Modifier.size(RadioSizes.playerCollapseButton),
@@ -159,6 +180,8 @@ fun PlayerPanel(
                     modifier = Modifier
                         .combinedClickable(
                             enabled = station != null,
+                            onClickLabel = if (canCopyTrack) stringResource(R.string.a11y_copy_track) else null,
+                            onLongClickLabel = showStreamInfoLabel,
                             onClick = {
                                 if (trackStatus == null && trackText.isNotBlank()) {
                                     copyTextToClipboard(
@@ -175,6 +198,14 @@ fun PlayerPanel(
                             },
                             onLongClick = { showStreamInfo = true },
                         )
+                        .semantics {
+                            if (station != null) {
+                                customActions = listOf(
+                                    CustomAccessibilityAction(showStreamInfoLabel) { showStreamInfo = true; true },
+                                )
+                            }
+                            if (announceStatus) liveRegion = LiveRegionMode.Polite
+                        }
                         .fillMaxWidth(),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -188,10 +219,12 @@ fun PlayerPanel(
                             modifier = Modifier.weight(1f),
                         )
                         if (loading) {
+                            val loadingLabel = stringResource(R.string.a11y_loading)
                             CircularProgressIndicator(
                                 modifier = Modifier
                                     .padding(start = RadioSpacing.medium)
-                                    .size(RadioSizes.icon),
+                                    .size(RadioSizes.icon)
+                                    .semantics { contentDescription = loadingLabel },
                                 strokeWidth = 2.dp,
                                 color = RadioPrimary,
                             )
@@ -248,7 +281,7 @@ fun PlayerPanel(
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_shuffle),
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.a11y_random_station),
                             modifier = Modifier.size(RadioSizes.icon),
                         )
                     }
@@ -264,7 +297,7 @@ fun PlayerPanel(
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_skip_previous),
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.a11y_previous_station),
                                 modifier = Modifier.size(RadioSizes.icon),
                             )
                         }
@@ -272,13 +305,16 @@ fun PlayerPanel(
                             enabled = true,
                             onClick = onPlayPause,
                             onLongClick = onStop,
+                            onLongClickLabel = stopLabel,
                             modifier = Modifier.size(RadioSizes.primaryPlaybackButton),
                         ) {
                             Icon(
                                 painter = painterResource(
                                     if (hasActivePlaybackRequest) R.drawable.ic_pause else R.drawable.ic_play_arrow,
                                 ),
-                                contentDescription = null,
+                                contentDescription = stringResource(
+                                    if (hasActivePlaybackRequest) R.string.a11y_pause else R.string.a11y_play,
+                                ),
                                 modifier = Modifier.size(RadioSizes.iconPlayback),
                             )
                         }
@@ -289,7 +325,7 @@ fun PlayerPanel(
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_skip_next),
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.a11y_next_station),
                                 modifier = Modifier.size(RadioSizes.icon),
                             )
                         }
@@ -435,6 +471,7 @@ private fun PlayerIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
     content: @Composable () -> Unit,
 ) {
     if (onLongClick != null) {
@@ -445,9 +482,17 @@ private fun PlayerIconButton(
                 .background(if (enabled) RadioSurfaceHigh else RadioSurfaceHigh)
                 .combinedClickable(
                     enabled = enabled,
+                    role = Role.Button,
+                    onLongClickLabel = onLongClickLabel,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                ),
+                )
+                .semantics {
+                    // Long press is hard to discover with a screen reader; expose it as an action too.
+                    if (onLongClickLabel != null) {
+                        customActions = listOf(CustomAccessibilityAction(onLongClickLabel) { onLongClick(); true })
+                    }
+                },
         ) {
             CompositionLocalProvider(LocalContentColor provides if (enabled) RadioPrimary else RadioTextMuted) {
                 content()
@@ -479,15 +524,29 @@ private fun VolumeButton(
         -(sliderHeight + sliderTrackBottomGap - sliderTrackBottomInset).roundToPx()
     }
 
+    val volumePercent = (volume.coerceIn(0f, 1f) * 100).roundToInt()
+    val volumeState = stringResource(R.string.a11y_percent_format, volumePercent)
+    val volumeUpLabel = stringResource(R.string.a11y_volume_up)
+    val volumeDownLabel = stringResource(R.string.a11y_volume_down)
+    val adjustVolume = { delta: Float -> onVolumeChange((volume + delta).coerceIn(0f, 1f)) }
+
     Box(contentAlignment = Alignment.Center, modifier = modifier) {
         OmniFilledIconButton(
             enabled = true,
             onClick = { expanded = !expanded },
-            modifier = Modifier.size(RadioSizes.button),
+            modifier = Modifier
+                .size(RadioSizes.button)
+                .semantics {
+                    stateDescription = volumeState
+                    customActions = listOf(
+                        CustomAccessibilityAction(volumeUpLabel) { adjustVolume(VOLUME_STEP); true },
+                        CustomAccessibilityAction(volumeDownLabel) { adjustVolume(-VOLUME_STEP); true },
+                    )
+                },
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_volume),
-                contentDescription = null,
+                contentDescription = stringResource(R.string.a11y_volume),
                 modifier = Modifier.size(RadioSizes.icon),
             )
         }
@@ -524,6 +583,8 @@ private fun VerticalVolumeSlider(
     val resolvedTrackColor = trackColor ?: RadioOutline
     val resolvedActiveTrackColor = activeTrackColor ?: RadioPrimary
     val resolvedThumbColor = thumbColor ?: RadioText
+    val volumeLabel = stringResource(R.string.a11y_volume)
+    val volumeState = stringResource(R.string.a11y_percent_format, (coercedVolume * 100).roundToInt())
 
     fun positionToVolume(y: Float, height: Float, thumbHeight: Float, verticalPadding: Float): Float {
         val trackTop = verticalPadding + thumbHeight / 2f
@@ -533,7 +594,18 @@ private fun VerticalVolumeSlider(
     }
 
     Canvas(
-        modifier = modifier.pointerInput(Unit) {
+        modifier = modifier
+            .semantics {
+                contentDescription = volumeLabel
+                stateDescription = volumeState
+                // steps = 19 gives 5% increments for screen reader swipe/scroll adjustments.
+                progressBarRangeInfo = ProgressBarRangeInfo(coercedVolume, 0f..1f, steps = 19)
+                setProgress { target ->
+                    onVolumeChange(target.coerceIn(0f, 1f))
+                    true
+                }
+            }
+            .pointerInput(Unit) {
             val thumbHeight = RadioSizes.volumeThumbHeight.toPx()
             val verticalPadding = RadioSpacing.small.toPx()
 
@@ -621,3 +693,5 @@ private fun VerticalVolumeSlider(
         )
     }
 }
+
+private const val VOLUME_STEP = 0.1f

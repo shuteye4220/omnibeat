@@ -1,5 +1,8 @@
 package omnibeat.app.ui
 
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import omnibeat.app.R
 
 import android.content.ClipData
@@ -217,6 +220,8 @@ private fun AboutLinkRow(
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val linkCopiedText = stringResource(R.string.toast_link_copied)
+    val openLinkLabel = stringResource(R.string.a11y_open_link)
+    val copyLinkLabel = stringResource(R.string.a11y_copy_link)
     val enabled = url != null
 
     Row(
@@ -226,6 +231,8 @@ private fun AboutLinkRow(
             .fillMaxWidth()
             .combinedClickable(
                 enabled = enabled,
+                onClickLabel = openLinkLabel,
+                onLongClickLabel = copyLinkLabel,
                 onClick = { url?.let(uriHandler::openUri) },
                 onLongClick = {
                     url?.let {
@@ -234,6 +241,17 @@ private fun AboutLinkRow(
                     }
                 },
             )
+            .semantics {
+                if (url != null) {
+                    customActions = listOf(
+                        CustomAccessibilityAction(copyLinkLabel) {
+                            copyLinkToClipboard(context, label = label, url = url)
+                            Toast.makeText(context, linkCopiedText, Toast.LENGTH_SHORT).show()
+                            true
+                        },
+                    )
+                }
+            }
             .padding(vertical = RadioSpacing.fieldGap),
     ) {
         Column(
