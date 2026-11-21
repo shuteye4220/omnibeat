@@ -45,5 +45,4 @@ jobs:
           gh release create latest-a11y OmniBeat-a11y.apk \
             --title "Latest accessible build" \
             --notes "Built from ${GITHUB_SHA::7}. Install OmniBeat-a11y.apk; it sits alongside OmniBeat from F-Droid." \
-            --prerelease \
             --target "$GITHUB_SHA"
