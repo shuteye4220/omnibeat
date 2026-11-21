@@ -41,8 +41,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest-a11y --yes --cleanup-tag || true
-          gh release create latest-a11y OmniBeat-a11y.apk \
-            --title "Latest accessible build" \
-            --notes "Built from ${GITHUB_SHA::7}. Install OmniBeat-a11y.apk; it sits alongside OmniBeat from F-Droid." \
-            --target "$GITHUB_SHA"
+          notes="Built from ${GITHUB_SHA::7}. Install OmniBeat-a11y.apk; it sits alongside OmniBeat from F-Droid."
+          if gh release view latest-a11y >/dev/null 2>&1; then
+            # Replace the file in place so the download link never disappears mid-update.
+            gh release upload latest-a11y OmniBeat-a11y.apk --clobber
+            gh release edit latest-a11y --notes "$notes"
+          else
+            gh release create latest-a11y OmniBeat-a11y.apk \
+              --title "Latest accessible build" \
+              --notes "$notes" \
+              --target "$GITHUB_SHA"
+          fi
